@@ -39,6 +39,16 @@ use Yii;
 class Action extends Component
 {
     /**
+     * @event ActionEvent an event raised right before the action is executed.
+     * You may set [[ActionEvent::isValid]] to be false to cancel the action execution.
+     */
+    const EVENT_BEFORE_RUN = 'beforeRun';
+    /**
+     * @event ActionEvent an event raised right after the action was executed.
+     */
+    const EVENT_AFTER_RUN = 'afterRun';
+
+    /**
      * @var string ID of the action
      */
     public $id;
@@ -92,7 +102,7 @@ class Action extends Component
         }
         if ($this->beforeRun()) {
             $result = call_user_func_array([$this, 'run'], $args);
-            $this->afterRun();
+            $result = $this->afterRun($result);
 
             return $result;
         }
@@ -109,14 +119,20 @@ class Action extends Component
      */
     protected function beforeRun()
     {
-        return true;
+        $event = new ActionEvent($this);
+        $this->trigger(self::EVENT_BEFORE_RUN, $event);
+        return $event->isValid;
     }
 
     /**
      * This method is called right after `run()` is executed.
      * You may override this method to do post-processing work for the action run.
      */
-    protected function afterRun()
+    protected function afterRun($result)
     {
+        $event = new ActionEvent($this);
+        $event->result = $result;
+        $this->trigger(self::EVENT_AFTER_RUN, $event);
+        return $event->result;
     }
 }
